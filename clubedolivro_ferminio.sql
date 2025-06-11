@@ -33,7 +33,7 @@ CREATE TABLE avaliacoes (
     id_avaliacao INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_livro INT NOT NULL,
-    nota INT CHECK (nota BETWEEN 1 AND 5),
+    nota ENUM('1', '2', '3', '4', '5'),
     data_avaliacao DATE NOT NULL,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_livro) REFERENCES livros(id_livro),
