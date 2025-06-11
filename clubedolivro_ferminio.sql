@@ -24,7 +24,7 @@ CREATE TABLE leituras (
     id_leitura INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_livro INT NOT NULL,
-    mes_ano DATE NOT NULL,
+    data_leitura DATE NOT NULL,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_livro) REFERENCES livros(id_livro));
 
