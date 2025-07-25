@@ -1,95 +1,158 @@
 -- Criação do banco de dados do Clube do Livro
-CREATE DATABASE ClubeDoLivro;
+CREATE DATABASE clubedolivro;
+USE clubedolivro;
 
-USE ClubeDoLivro;
+-- Tabelas auxiliares (sem dependências)
+-- Tabela de referência para cargos de usuário
+CREATE TABLE cargos_usuario (
+    id_cargo INT AUTO_INCREMENT PRIMARY KEY,
+    cargo VARCHAR(50) NOT NULL
+);
 
--- 1. Tabela de usuários: armazena todos os membros do clube e dados pessoais
+-- Tabelas de referência para autores, editoras, gêneros,
+-- status de livro e encontros
+CREATE TABLE autores (
+    id_autor INT AUTO_INCREMENT PRIMARY KEY,
+    nome_autor VARCHAR(150) NOT NULL
+);
+
+CREATE TABLE editoras (
+    id_editora INT AUTO_INCREMENT PRIMARY KEY,
+    nome_editora VARCHAR(150) NOT NULL
+);
+
+CREATE TABLE generos (
+    id_genero INT AUTO_INCREMENT PRIMARY KEY,
+    genero VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE status_livro (
+    id_status INT AUTO_INCREMENT PRIMARY KEY,
+    status VARCHAR(30) NOT NULL
+);
+
+CREATE TABLE status_encontro (
+    id_status_encontro INT AUTO_INCREMENT PRIMARY KEY,
+    status VARCHAR(30) NOT NULL
+);
+
+-- Tabelas principais (dependem das anteriores)
+-- Tabela de usuários, atribuindo nome, email, idade, data de entrada no clube, e cargo
 CREATE TABLE usuarios (
-    id_usuario INT AUTO_INCREMENT PRIMARY KEY,      -- Identificador único do usuário
-    nome VARCHAR(100) NOT NULL,                     -- Nome completo do usuário
-    email VARCHAR(150) UNIQUE NOT NULL,             -- Email único do usuário
-    idade INT NOT NULL,                             -- Idade do usuário
-    data_entrada DATE NOT NULL);                    -- Data de entrada no clube
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    idade INT NOT NULL,
+    data_entrada DATE NOT NULL,
+    id_cargo INT,
+    FOREIGN KEY (id_cargo) REFERENCES cargos_usuario(id_cargo)
+);
 
--- 2. Tabela de livros: armazena os livros do acervo do clube e seu status de leitura
--- Cada livro pode ter três status: 'em andamento', 'lido' ou 'pendente'
+-- Tabela de livros, atribuindo titulo, ano de publicação, 
+-- e relacionando autor, gênero, editora e status
 CREATE TABLE livros (
-    id_livro INT AUTO_INCREMENT PRIMARY KEY,         -- Identificador único do livro
-    titulo VARCHAR(200) NOT NULL,                    -- Título do livro
-    autor VARCHAR(150),                               -- Autor do livro
-    ano_publicacao INT,                              -- Ano de publicação do livro
-    genero VARCHAR(100) NOT NULL,                     -- Gênero literário do livro
-    status ENUM('em andamento', 'lido', 'pendente')   -- Status de leitura do livro para o clube
-        DEFAULT 'pendente');
+    id_livro INT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(200) NOT NULL,
+    id_autor INT,
+    ano_publicacao INT,
+    id_genero INT,
+    id_editora INT,
+    id_status INT,
+    FOREIGN KEY (id_autor) REFERENCES autores(id_autor),
+    FOREIGN KEY (id_genero) REFERENCES generos(id_genero),
+    FOREIGN KEY (id_editora) REFERENCES editoras(id_editora),
+    FOREIGN KEY (id_status) REFERENCES status_livro(id_status)
+);
 
+-- Tabela de subgrupos, criando subgrupos dentro do clube, podendo variar em genero de leitura, faixa etaria, e etc.
+-- relacionando criador, gênero e atribuindo uma descrição
+CREATE TABLE subgrupos (
+    id_subgrupo INT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(100) NOT NULL,
+    id_criador INT NOT NULL,
+    id_genero INT NOT NULL,
+    descricao TEXT,
+    FOREIGN KEY (id_criador) REFERENCES usuarios(id_usuario),
+    FOREIGN KEY (id_genero) REFERENCES generos(id_genero)
+);
 
--- 3. Tabela de encontros de leitura: cada encontro trata um único livro que foi lido e debatido
--- Cada livro só pode ser tratado em um encontro, garantindo que não haja duplicidade
+-- Tabela de encontros, registrando os encontros do clube, relacionando livro, subgrupo e status
+-- atribuindo data, local e formato do encontro
 CREATE TABLE encontros (
-    id_encontro INT AUTO_INCREMENT PRIMARY KEY,      -- Identificador único do encontro
-    data_encontro DATE NOT NULL,                     -- Data do encontro
-    local VARCHAR(200) NOT NULL,                     -- Local do encontro
-    id_livro INT NOT NULL,                           -- Livro tratado no encontro
-    status_encontro ENUM('programado', 'realizado') NOT NULL DEFAULT 'programado',  -- Status do encontro
+    id_encontro INT AUTO_INCREMENT PRIMARY KEY,
+    data_encontro DATE NOT NULL,
+    local VARCHAR(200) NOT NULL,
+    id_livro INT NOT NULL,
+    formato_encontro ENUM('presencial', 'virtual', 'oficina', 'palestra') DEFAULT 'presencial',
+    id_status_encontro INT NOT NULL,
+    id_subgrupo INT,
     FOREIGN KEY (id_livro) REFERENCES livros(id_livro),
-    UNIQUE (id_livro));                             -- Garante que cada livro só apareça em um encontro
+    FOREIGN KEY (id_status_encontro) REFERENCES status_encontro(id_status_encontro),
+    FOREIGN KEY (id_subgrupo) REFERENCES subgrupos(id_subgrupo),
+    UNIQUE (id_livro)
+);
 
--- 4. Tabela de leituras: registra quais livros foram lidos por quais usuários e quando 
--- Cada leitura pode estar associada a um encontro, caso o livro tenha sido lido em grupo
+-- Tabela de leituras, registrando as leituras feitas pelos usuários, relacionando usuário, livro e encontro
+-- atribuindo data de leitura
 CREATE TABLE leituras (
-    id_leitura INT AUTO_INCREMENT PRIMARY KEY,       -- Identificador único da leitura
-    id_usuario INT NOT NULL,                         -- Referência ao usuário
-    id_livro INT NOT NULL,                           -- Referência ao livro
-    data_leitura DATE NOT NULL,                      -- Data em que o livro foi lido
-    id_encontro INT,                                 -- Referência ao encontro
+    id_leitura INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_livro INT NOT NULL,
+    data_leitura DATE NOT NULL,
+    id_encontro INT,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_livro) REFERENCES livros(id_livro),
-    FOREIGN KEY (id_encontro) REFERENCES encontros(id_encontro));
+    FOREIGN KEY (id_encontro) REFERENCES encontros(id_encontro)
+);
 
--- 5. Tabela de avaliações: armazena as notas dadas pelos usuários aos livros lidos, com comentários opcionais
--- Cada usuário pode avaliar cada livro apenas uma vez, garantindo unicidade na avaliação
+-- Tabela de avaliações, registrando as avaliações dos livros pelos usuários,
+-- relacionando usuário, livro e atribuindo nota, comentário e data de avaliação
 CREATE TABLE avaliacoes (
-    id_avaliacao INT AUTO_INCREMENT PRIMARY KEY,     -- Identificador único da avaliação
-    id_usuario INT NOT NULL,                         -- Referência ao usuário
-    id_livro INT NOT NULL,                           -- Referência ao livro
-    nota ENUM('1', '2', '3', '4', '5'),              -- Nota atribuída ao livro
-    comentario TEXT,                                 -- Comentário opcional junto da avaliação
-    data_avaliacao DATE NOT NULL,                    -- Data da avaliação
+    id_avaliacao INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_livro INT NOT NULL,
+    nota ENUM('1', '2', '3', '4', '5'),
+    comentario TEXT,
+    data_avaliacao DATE NOT NULL,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_livro) REFERENCES livros(id_livro),
-    UNIQUE (id_usuario, id_livro));                    -- Garante que cada usuário avalie cada livro apenas uma vez
+    UNIQUE (id_usuario, id_livro)
+);
 
-
--- 6. Tabela de sugestões: armazena sugestões de próximos livros a serem lidos, com quem indicou e a data da sugestão
+-- Tabela de sugestões, registrando sugestões de livros feitas pelos usuários,
+-- relacionando usuário, livro e atribuindo data de sugestão
 CREATE TABLE sugestoes (
-    id_sugestao INT AUTO_INCREMENT PRIMARY KEY,      -- Identificador único da sugestão
-    id_usuario INT NOT NULL,                         -- Referência ao usuário que sugeriu
-    id_livro INT NOT NULL,                           -- Referência ao livro sugerido
-    data_sugestao DATE NOT NULL,                     -- Data da sugestão
+    id_sugestao INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_livro INT NOT NULL,
+    data_sugestao DATE NOT NULL,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_livro) REFERENCES livros(id_livro),
-    UNIQUE (id_usuario, id_livro));                    -- Garante que o mesmo usuário não sugira o mesmo livro mais de uma vez
+    UNIQUE (id_usuario, id_livro)
+);
 
-
--- 7. Tabela de associação entre encontros e usuários: registra a participação dos usuários nos encontros
+-- Tabelas de relacionamento
+-- Tabela de participantes de encontros, registrando quais usuários participaram de quais encontros
 CREATE TABLE participantes_encontro (
-    id_encontro INT NOT NULL,                        -- Referência ao encontro
-    id_usuario INT NOT NULL,                         -- Referência ao usuário participante
-    PRIMARY KEY (id_encontro, id_usuario),           -- Chave primária composta
+    id_encontro INT NOT NULL,
+    id_usuario INT NOT NULL,
+    PRIMARY KEY (id_encontro, id_usuario),
     FOREIGN KEY (id_encontro) REFERENCES encontros(id_encontro),
-    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario));
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+);
+-- Tabela de usuários em subgrupos, registrando quais usuários pertencem a quais subgrupos
+CREATE TABLE usuario_subgrupo (
+    id_usuario INT NOT NULL,
+    id_subgrupo INT NOT NULL,
+    PRIMARY KEY (id_usuario, id_subgrupo),
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
+    FOREIGN KEY (id_subgrupo) REFERENCES subgrupos(id_subgrupo)
+);
 
+-- FUNÇÕES
+-- Calculam métricas específicas para o Clube do Livro, como médias, totais e pendências.
 
------------Funções, Views e Procedures para o Clube do Livro
-
---- Escolhi apresentar as funções primeiro pois uma das 
---- funções criadas será usada dentro de uma view
-
--- FUNÇÕES: --
-
--- Função: media_avaliacao_livro
--- Objetivo: Calcular a média das notas de avaliação de um livro.
--- Tabela: avaliacoes
+-- Calcula a média das avaliações de um livro
 DELIMITER $$
 CREATE FUNCTION media_avaliacao_livro(lid INT)
 RETURNS DECIMAL(3,2)
@@ -101,48 +164,66 @@ BEGIN
 END $$
 DELIMITER ;
 
-
--- Função: livros_nao_avaliados_usuario
--- Objetivo: Retorna quantos livros lidos ainda não foram avaliados por um usuário
--- Tabelas: leituras, avaliacoes
+-- Retorna a quantidade de livros lidos por um usuário que ainda não foram avaliados
 DELIMITER $$
 CREATE FUNCTION livros_nao_avaliados_usuario(uid INT)
 RETURNS INT
 DETERMINISTIC
 BEGIN
     DECLARE pendentes INT;
-    
     SELECT COUNT(DISTINCT l.id_livro) INTO pendentes
     FROM leituras l
-    LEFT JOIN avaliacoes a ON l.id_livro = a.id_livro 
-        AND l.id_usuario = a.id_usuario
-    WHERE l.id_usuario = uid 
-        AND a.id_avaliacao IS NULL;
-        
+    LEFT JOIN avaliacoes a ON l.id_livro = a.id_livro AND l.id_usuario = a.id_usuario
+    WHERE l.id_usuario = uid AND a.id_avaliacao IS NULL;
     RETURN pendentes;
 END $$
 DELIMITER ;
 
--- VIEWS:
+-- Retorna o total de encontros que um usuário participou
+DELIMITER $$
+CREATE FUNCTION total_encontros_participados(uid INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE total INT;
+    SELECT COUNT(DISTINCT id_encontro) INTO total
+    FROM participantes_encontro
+    WHERE id_usuario = uid;
+    RETURN total;
+END $$
+DELIMITER ;
 
--- View: livros_com_encontros
--- Objetivo: Exibir todos os livros lidos, com data e local do encontro em que foram discutidos.
--- Tabelas: livros, encontros (usando a função media_avaliacao_livro para calcular a média das avaliações)
+-- Retorna o total de sugestões feitas por um usuário
+DELIMITER $$
+CREATE FUNCTION total_sugestoes_usuario(uid INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE total INT;
+    SELECT COUNT(*) INTO total
+    FROM sugestoes
+    WHERE id_usuario = uid;
+    RETURN total;
+END $$
+DELIMITER ;
+
+-- VIEWS
+
+-- Esta view lista os livros lidos, seus autores, a data e local do encontro, e a média de avaliação dos livros.
 CREATE VIEW livros_com_encontros AS 
 SELECT 
     livros.titulo, 
-    livros.autor, 
+    autores.nome_autor,
     encontros.data_encontro, 
     encontros.local,
-    media_avaliacao_livro(livros.id_livro)
+    media_avaliacao_livro(livros.id_livro) AS media_avaliacao
 FROM livros
+JOIN autores ON livros.id_autor = autores.id_autor
 JOIN encontros ON livros.id_livro = encontros.id_livro
-WHERE livros.status = 'lido';
+WHERE livros.id_status = (SELECT id_status FROM status_livro WHERE status = 'lido');
 
--- View: proximos_encontros
--- Objetivo: Exibir os próximos encontros programados, com detalhes do livro e número de participantes confirmados
--- Tabelas: encontros, livros, participantes_encontro
-CREATE OR REPLACE VIEW proximos_encontros AS
+-- Esta view mostra os encontros programados, incluindo o livro discutido, local, data e número de participantes confirmados.
+CREATE VIEW proximos_encontros AS
 SELECT 
     encontros.id_encontro,
     encontros.data_encontro,
@@ -152,35 +233,84 @@ SELECT
 FROM encontros
 JOIN livros ON encontros.id_livro = livros.id_livro
 LEFT JOIN participantes_encontro ON encontros.id_encontro = participantes_encontro.id_encontro
-WHERE encontros.status_encontro = 'programado' 
+WHERE encontros.id_status_encontro = (SELECT id_status_encontro FROM status_encontro WHERE status = 'programado')
 GROUP BY encontros.id_encontro, encontros.data_encontro, encontros.local, livros.titulo
 ORDER BY encontros.data_encontro;
 
--- View: ranking_participacao
--- Objetivo: Mostrar ranking dos usuários mais participativos, incluindo número de encontros, 
--- avaliações feitas e sugestões dadas
+-- Esta view calcula a pontuação total de cada usuário com base em encontros participados, avaliações feitas e sugestões enviadas.
 CREATE VIEW ranking_participacao AS
 SELECT 
     usuarios.nome,
-    COUNT(DISTINCT participantes_encontro.id_encontro) as total_encontros,
+    total_encontros_participados(usuarios.id_usuario) as total_encontros,
     COUNT(DISTINCT avaliacoes.id_avaliacao) as total_avaliacoes,
-    COUNT(DISTINCT sugestoes.id_sugestao) as total_sugestoes,
-    (COUNT(DISTINCT participantes_encontro.id_encontro) + 
+    total_sugestoes_usuario(usuarios.id_usuario) as total_sugestoes,
+    (total_encontros_participados(usuarios.id_usuario) + 
      COUNT(DISTINCT avaliacoes.id_avaliacao) + 
-     COUNT(DISTINCT sugestoes.id_sugestao)) as pontuacao_total
+     total_sugestoes_usuario(usuarios.id_usuario)) as pontuacao_total
 FROM usuarios
-LEFT JOIN participantes_encontro ON usuarios.id_usuario = participantes_encontro.id_usuario
 LEFT JOIN avaliacoes ON usuarios.id_usuario = avaliacoes.id_usuario
-LEFT JOIN sugestoes ON usuarios.id_usuario = sugestoes.id_usuario
 GROUP BY usuarios.id_usuario, usuarios.nome
 ORDER BY pontuacao_total DESC;
 
+-- Esta view lista os livros lidos por usuários que ainda não fizeram avaliações,
+-- incluindo o título do livro, nome do usuário e data de leitura.
+CREATE VIEW livros_sem_avaliacao AS
+SELECT l.id_livro, l.titulo, u.nome
+FROM leituras le
+JOIN livros l ON le.id_livro = l.id_livro
+JOIN usuarios u ON le.id_usuario = u.id_usuario
+LEFT JOIN avaliacoes a ON le.id_livro = a.id_livro AND le.id_usuario = a.id_usuario
+WHERE a.id_avaliacao IS NULL;
+
+-- Estatísticas de leitura e avaliação dos livros por gênero
+CREATE VIEW estatisticas_livros AS
+SELECT 
+    l.titulo,
+    g.genero,
+    COUNT(le.id_leitura) as total_leituras,
+    AVG(CAST(a.nota AS DECIMAL)) as media_avaliacao
+FROM livros l
+JOIN generos g ON l.id_genero = g.id_genero
+LEFT JOIN leituras le ON l.id_livro = le.id_livro
+LEFT JOIN avaliacoes a ON l.id_livro = a.id_livro
+GROUP BY l.id_livro, l.titulo, g.genero;
+
+-- Lista participantes de cada subgrupo
+CREATE VIEW participantes_subgrupo AS
+SELECT
+    sg.titulo AS subgrupo,
+    u.nome AS participante
+FROM usuario_subgrupo us
+JOIN usuarios u ON us.id_usuario = u.id_usuario
+JOIN subgrupos sg ON us.id_subgrupo = sg.id_subgrupo;
+
+-- Mostra detalhes completos dos encontros, incluindo livro, autor, editora, subgrupo e criador
+CREATE VIEW encontros_detalhados AS
+SELECT
+    e.id_encontro,
+    e.data_encontro,
+    e.local,
+    l.titulo AS livro,
+    a.nome_autor AS autor,
+    g.genero,
+    ed.nome_editora AS editora,
+    e.formato_encontro,
+    se.status AS status_encontro,
+    sg.titulo AS subgrupo,
+    u.nome AS criador_subgrupo
+FROM encontros e
+JOIN livros l ON e.id_livro = l.id_livro
+JOIN autores a ON l.id_autor = a.id_autor
+JOIN generos g ON l.id_genero = g.id_genero
+JOIN editoras ed ON l.id_editora = ed.id_editora
+JOIN status_encontro se ON e.id_status_encontro = se.id_status_encontro
+JOIN subgrupos sg ON e.id_subgrupo = sg.id_subgrupo
+JOIN usuarios u ON sg.id_criador = u.id_usuario;
 
 -- STORED PROCEDURES
 
--- Procedure: adiciona_sugestao
--- Objetivo: Adicionar uma nova sugestão de livro para um usuário, evitando duplicidade.
--- Tabela: sugestoes
+-- Adiciona uma sugestão de livro para um usuário, evitando duplicidade
+-- Esta procedure recebe o ID do usuário, ID do livro e a data da sugestão.
 DELIMITER $$
 CREATE PROCEDURE adiciona_sugestao(
   IN p_id_usuario INT,
@@ -197,9 +327,9 @@ BEGIN
 END $$
 DELIMITER ;
 
-
--- Procedure: estatisticas_usuario
--- Objetivo: Mostrar estatísticas completas de um usuário
+-- Gera estatísticas completas de participação de um usuário
+-- Esta procedure recebe o ID do usuário e retorna o nome, total de livros lidos,
+-- total de avaliações feitas, encontros participados, sugestões feitas e média de notas dadas.
 DELIMITER $$
 CREATE PROCEDURE estatisticas_usuario(IN p_id_usuario INT)
 BEGIN
@@ -220,49 +350,64 @@ BEGIN
 END $$
 DELIMITER ;
 
--- TRIGGERS:
-
--- 1. Trigger para atualizar status do livro quando é criado um encontro
--- Só atualiza o status do livro quando o encontro for realizado
-
+-- Cria ranking de participação por subgrupo
+-- Esta procedure recebe o ID do subgrupo e retorna o ranking de usuários
+-- com base no número de encontros participados, ordenado do maior para o menor.
 DELIMITER $$
-DROP TRIGGER IF EXISTS trig_atualiza_status_livro $$
+CREATE PROCEDURE ranking_subgrupo(IN p_id_subgrupo INT)
+BEGIN
+    SELECT
+        u.nome,
+        COUNT(DISTINCT pe.id_encontro) AS encontros_participados
+    FROM usuario_subgrupo us
+    JOIN usuarios u ON us.id_usuario = u.id_usuario
+    LEFT JOIN participantes_encontro pe ON u.id_usuario = pe.id_usuario
+    LEFT JOIN encontros e ON pe.id_encontro = e.id_encontro
+    WHERE us.id_subgrupo = p_id_subgrupo
+      AND e.id_subgrupo = p_id_subgrupo
+    GROUP BY u.id_usuario, u.nome
+    ORDER BY encontros_participados DESC;
+END $$
+DELIMITER ;
+
+-- TRIGGERS
+
+-- Atualiza o status do livro para "lido" quando o encontro é marcado como "realizado"
+DELIMITER $$
 CREATE TRIGGER trig_atualiza_status_livro
 AFTER UPDATE ON encontros
 FOR EACH ROW
 BEGIN
-    IF NEW.status_encontro = 'realizado' THEN 
+    IF NEW.id_status_encontro = (SELECT id_status_encontro FROM status_encontro WHERE status = 'realizado') THEN 
         UPDATE livros 
-        SET status = 'lido'
+        SET id_status = (SELECT id_status FROM status_livro WHERE status = 'lido')
         WHERE id_livro = NEW.id_livro;
     END IF;
 END $$
 DELIMITER ;
 
--- 2. Trigger para verificar número mínimo de participantes em um encontro
--- e notificar caso não atinja o mínimo de 3 participantes
+-- Alerta se um encontro programado tem menos de 3 participantes
+-- Esta trigger é acionada após a inserção de um participante em um encontro.
 DELIMITER $$
-
 CREATE TRIGGER trig_verifica_participantes_minimos
 AFTER INSERT ON participantes_encontro
 FOR EACH ROW
 BEGIN
     DECLARE total_participantes INT;
+    DECLARE status_atual VARCHAR(30);
 
-    -- Conta os participantes do mesmo encontro
+    SELECT status INTO status_atual
+    FROM status_encontro se
+    JOIN encontros e ON se.id_status_encontro = e.id_status_encontro
+    WHERE e.id_encontro = NEW.id_encontro;
+
     SELECT COUNT(*) INTO total_participantes
     FROM participantes_encontro
     WHERE id_encontro = NEW.id_encontro;
 
-    -- Verifica se é um encontro programado e se tem menos de 3 participantes
-    IF (
-        (SELECT status_encontro 
-         FROM encontros 
-         WHERE id_encontro = NEW.id_encontro) = 'programado'
-       ) AND total_participantes < 3 THEN
+    IF status_atual = 'programado' AND total_participantes < 3 THEN
         SIGNAL SQLSTATE '01000'
         SET MESSAGE_TEXT = 'Atenção: Encontro precisa de pelo menos 3 participantes para ser realizado';
     END IF;
-END$$
-
+END $$
 DELIMITER ;
